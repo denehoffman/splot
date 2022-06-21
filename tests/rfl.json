@@ -1,0 +1,10 @@
+{
+    "x": "RFL1",
+    "signal": "st.expon(xmin, tau_s).pdf(x) / np.diff(st.expon(xmin, tau_s).cdf((xmin, xmax)))",
+    "background": "st.expon(xmin, tau_b).pdf(x) / np.diff(st.expon(xmin, tau_b).cdf((xmin, xmax)))",
+    "range": [0.0, 0.6],
+    "params": {
+        "tau_s": {"initial": 0.08954, "fixed": true},
+        "tau_b": {"initial": 0.00900, "limits": [0.0, 0.02]}
+    }
+}

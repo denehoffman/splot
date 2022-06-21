@@ -1,0 +1,3 @@
+#!/bin/tcsh -f
+
+python /home/nhoffman/scripts/splot/src/splot/splot.py /raid2/nhoffman/results/flattree_flattree_no_FS_ksks__B4_ALL.root --cuts "LogConf > -4, FS1 > 0, FS2 > 0" --splot /home/nhoffman/scripts/splot/tests/rfl.json --output /home/nhoffman/scripts/splot/tests/test.root

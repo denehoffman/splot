@@ -1,0 +1,2 @@
+#!/bin/tcsh -f
+python -m black splot.py
