@@ -468,7 +468,8 @@ def write_tree(
         "Pz_Beam": "float32",
         "FinalState": finalstate.type,
     }
-    datatypes.update({value: df[key].type for key, value in added_branches.items()})
+    if output_branches:
+        datatypes.update({value: df[key].type for key, value in added_branches.items()})
     outfile = uproot.recreate(outpath)
     # AmpTools convention on names
     outfile.mktree(
