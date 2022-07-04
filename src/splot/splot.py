@@ -412,7 +412,7 @@ def cows(tree, cut_list: list[str], config: dict) -> tuple[str, ArrayLike]:
 
 
 def write_tree(
-    tree, cuts: str, outpath: str, weights=None, rcdb=True, min_pol=0.1
+    tree, cuts: str, outpath: str, weights=None, rcdb=True, min_pol=0.1, output_branches=None
 ) -> None:
     """Writes results to a new FlatTree
 
@@ -430,6 +430,9 @@ def write_tree(
         Flag to add energy-dependent polarization information into the Beam 3-momentum.
     min_pol: float
         Minimum polarization fraction to use.
+    output_branches: list[str]
+        Names of additional branches to output (can be renamed by formatting the string
+        as <old branch name>:<new branch name>).
     """
     branches = [
         "Weight",
@@ -443,6 +446,9 @@ def write_tree(
         "Py_FinalState",
         "Pz_FinalState",
     ]
+    if output_branches:
+        added_branches = {branch.split(":")[0]: branch.split(":")[1] for branch in output_branches}
+        branches += list(added_branches.keys())
     if rcdb:
         branches += ["RunNumber"]
     df = tree.arrays(branches, cuts, library="ak")
@@ -453,7 +459,7 @@ def write_tree(
             "Py": df["Py_FinalState"],
             "Pz": df["Pz_FinalState"],
         }
-    )
+    ) 
     datatypes = {
         "Weight": "float32",
         "E_Beam": "float32",
@@ -462,6 +468,7 @@ def write_tree(
         "Pz_Beam": "float32",
         "FinalState": finalstate.type,
     }
+    datatypes.update({value: df[key].type for key, value in added_branches.items()})
     outfile = uproot.recreate(outpath)
     # AmpTools convention on names
     outfile.mktree(
@@ -550,16 +557,17 @@ def write_tree(
         df["Px_Beam"] = polfrac * np.cos(angle * np.pi / 180)
         df["Py_Beam"] = polfrac * np.sin(angle * np.pi / 180)
         df["Pz_Beam"] = np.zeros_like(df["Pz_Beam"])
-    outfile["kin"].extend(
-        {
-            "Weight": weight[valid_runs],
-            "E_Beam": df["E_Beam"][valid_runs],
-            "Px_Beam": df["Px_Beam"][valid_runs],
-            "Py_Beam": df["Py_Beam"][valid_runs],
-            "Pz_Beam": df["Pz_Beam"][valid_runs],
-            "FinalState": finalstate[valid_runs],
+    extension = {
+        "Weight": weight[valid_runs],
+        "E_Beam": df["E_Beam"][valid_runs],
+        "Px_Beam": df["Px_Beam"][valid_runs],
+        "Py_Beam": df["Py_Beam"][valid_runs],
+        "Pz_Beam": df["Pz_Beam"][valid_runs],
+        "FinalState": finalstate[valid_runs]
         }
-    )
+    if output_branches:
+        extension.update({value: df[key][valid_runs] for key, value in added_branches.items()})
+    outfile["kin"].extend(extension)
 
 
 def main():
@@ -585,6 +593,7 @@ def main():
     parser.add_argument(
         "--minpol", default=0.1, help="minimum polarization fraction to use"
     )
+    parser.add_argument("--output-branches", nargs="+", type=str, help="branches to include in output tree, can be renamed by inputting them as <old_name>:<new_name>")
     args = parser.parse_args()
     with uproot.open(args.input) as f:
         t = f.get(f.keys()[0])
@@ -621,6 +630,14 @@ def main():
                 print("Computing COWs Weights")
                 cuts, weights = cows(t, cut_list, config)
         if args.output:
+            output_branches = None
+            if args.output_branches:
+                output_branches = []
+                for branch in args.output_branches:
+                    if ":" in branch:
+                        output_branches.append(branch)
+                    else:
+                        output_branches.append(f"{branch}:{branch}")
             write_tree(
                 t,
                 cuts,
@@ -628,6 +645,7 @@ def main():
                 weights=weights,
                 rcdb=(not args.norcdb),
                 min_pol=args.minpol,
+                output_branches=output_branches
             )
             print(f"Output tree written to {args.output} !")
 
